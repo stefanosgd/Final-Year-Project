@@ -16,20 +16,28 @@ ap.add_argument("-b", "--buffer", type=int, default=32, help="max buffer size")
 args = vars(ap.parse_args())
 
 # define range of blue color in HSV
-lower_blue = np.array([90, 100, 10])
-upper_blue = np.array([120, 255, 130])
+# lower_blue = np.array([90, 100, 10])
+# upper_blue = np.array([120, 255, 130])
+upper_blue = np.array([60, 125, 175])
+lower_blue = np.array([0, 105, 140])
 
 # define range of yellow color in HSV
-lower_yellow = np.array([20, 200, 150])
-upper_yellow = np.array([30, 255, 230])
+# lower_yellow = np.array([20, 200, 150])
+# upper_yellow = np.array([30, 255, 230])
+upper_yellow = np.array([180, 175, 70])
+lower_yellow = np.array([120, 130, 30])
 
 # define range of green color in HSV
-lower_green = np.array([50, 100, 10])
-upper_green = np.array([115, 155, 50])
+# lower_green = np.array([50, 100, 10])
+# upper_green = np.array([115, 155, 50])
+upper_green = np.array([255, 129, 129])
+lower_green = np.array([100, 113, 113])
 
 # define range of red color in HSV
-lower_red = np.array([160, 200, 20])
-upper_red = np.array([190, 255, 60])
+# lower_red = np.array([160, 200, 20])
+# upper_red = np.array([190, 255, 60])
+upper_red = np.array([255, 131, 176])
+lower_red = np.array([100, 111, 153])
 
 weight_diameter = 450 / 1000  # m
 start_x = 0
@@ -84,32 +92,36 @@ while True:
         break
 
     # todo Contours here
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    # Threshold the HSV image to get only blue colors
-    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-    # Threshold the HSV image to get only yellow colors
-    yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    # Threshold the HSV image to get only green colors
-    green_mask = cv2.inRange(hsv, lower_green, upper_green)
-    # Threshold the HSV image to get only red colors
-    red_mask = cv2.inRange(hsv, lower_red, upper_red)
+    # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    # # Threshold the HSV image to get only blue colors
+    # blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    # # Threshold the HSV image to get only yellow colors
+    # yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    # # Threshold the HSV image to get only green colors
+    # green_mask = cv2.inRange(hsv, lower_green, upper_green)
+    # # Threshold the HSV image to get only red colors
+    # red_mask = cv2.inRange(hsv, lower_red, upper_red)
 
-    mask = blue_mask + yellow_mask + green_mask + red_mask
+    ycbcr = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+    # Threshold the HSV image to get only blue colors
+    blue_mask = cv2.inRange(ycbcr, lower_blue, upper_blue)
+    # Threshold the HSV image to get only yellow colors
+    yellow_mask = cv2.inRange(ycbcr, lower_yellow, upper_yellow)
+    # Threshold the HSV image to get only green colors
+    # green_mask = cv2.inRange(ycbcr, lower_green, upper_green)
+    # Threshold the HSV image to get only red colors
+    # red_mask = cv2.inRange(ycbcr, lower_red, upper_red)
+
+    mask = blue_mask + yellow_mask
+    # mask = blue_mask + yellow_mask + green_mask + red_mask
     # cv2.imshow("Original mask", mask)
 
-    mask = cv2.erode(mask, None, iterations=3)
-
-    mask = cv2.dilate(mask, None, iterations=3)
-    mask = cv2.erode(mask, None, iterations=3)
-
-    mask = cv2.dilate(mask, None, iterations=3)
     mask = cv2.erode(mask, None, iterations=3)
 
     mask = cv2.dilate(mask, None, iterations=3)
 
     # Bitwise-AND mask and original image
     res = cv2.bitwise_and(frame, frame, mask=mask)
-
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -200,6 +212,7 @@ while True:
 
     cv2.imshow("Frame", frame)
     cv2.imshow("Mask", mask)
+    cv2.imshow("Res", res)
     # cv2.imshow("Path", img)
     key = cv2.waitKey(15 * (not pause_playback)) & 0xFF
 
