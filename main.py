@@ -153,8 +153,8 @@ while True:
                 diameter = radius * 2
                 start_y, start_x = pts[0]
             else:
-                displacement_x_calculated = ((start_x - pts[0][1]))  # * weight_diameter) / diameter
-                displacement_y_calculated = ((pts[0][0] - start_y))  # * weight_diameter) / diameter
+                displacement_x_calculated = ((start_x - pts[0][1]) * weight_diameter) / diameter
+                displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
                 displacement_x.append(displacement_x_calculated)
                 if len(pts) >= 4:
                     change = pts[3][1] - pts[0][1]
@@ -223,23 +223,25 @@ else:
 
 # close all windows
 cv2.destroyAllWindows()
-pprint(displacement_x)
-plt.subplot(321)
-plt.plot(time_x, displacement_x)
-plt.ylabel("Displacement")
-plt.xlabel("Time")
-plt.subplot(322)
-plt.plot(time_y, displacement_y)
-plt.ylabel("Displacement")
-plt.xlabel("Time")
-plt.subplot(323)
-plt.plot(time_x, velocity_x)
-plt.subplot(324)
-plt.plot(time_y, velocity_y)
-plt.subplot(325)
-plt.plot(time_x, acceleration_x)
-plt.subplot(326)
-plt.plot(time_y, acceleration_y)
+plt.plot(displacement_y, displacement_x)
+plt.axes().set_aspect('equal')
+# pprint(displacement_x)
+# plt.subplot(321)
+# plt.plot(time_x, displacement_x)
+# plt.ylabel("Displacement")
+# plt.xlabel("Time")
+# plt.subplot(322)
+# plt.plot(time_y, displacement_y)
+# plt.ylabel("Displacement")
+# plt.xlabel("Time")
+# plt.subplot(323)
+# plt.plot(time_x, velocity_x)
+# plt.subplot(324)
+# plt.plot(time_y, velocity_y)
+# plt.subplot(325)
+# plt.plot(time_x, acceleration_x)
+# plt.subplot(326)
+# plt.plot(time_y, acceleration_y)
 # plt.plot(time_x, np.divide(displacement_x, time_x))
 # plt.subplot(224)
 # plt.plot(time_y, np.divide(displacement_y, time_y))
