@@ -107,6 +107,12 @@ def track(videoPath, colourMask):
             # print(frame.shape)
             # frame = ret, frame
 
+        # if we are viewing a video and we did not grab a frame,
+        # then we have reached the end of the video
+
+        if frame is None:
+            break
+
         # resize the frame (so we can process it faster) and grab the
         # frame dimensions
         frame = imutils.resize(frame, width=500)
@@ -210,7 +216,6 @@ def track(videoPath, colourMask):
                 # it to compute the minimum enclosing circle and
                 # centroid
                 c = max(cnts, key=cv2.contourArea)
-                initBB = cv2.boundingRect(c)
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
                 M = cv2.moments(c)
                 # center = (int(x), int(y))
@@ -218,6 +223,7 @@ def track(videoPath, colourMask):
 
                 # only proceed if the radius meets a minimum size
                 if 50 < radius < 150:
+                    initBB = cv2.boundingRect(c)
                     # draw the circle and centroid on the frame,
                     # then update the list of tracked points
                     # cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
@@ -278,7 +284,7 @@ def track(videoPath, colourMask):
             #
         out.write(frame)
         cv2.imshow("Frame", frame)
-        # cv2.imshow("Mask", mask)
+        cv2.imshow("Mask", mask)
         key = cv2.waitKey(10 * (not pause_playback)) & 0xFF
 
         # show the output frame
@@ -288,6 +294,7 @@ def track(videoPath, colourMask):
         # box to track
         if key == ord("r"):
             pause_playback = not pause_playback
+            tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             initBB = None
             pts = []
             # # select the bounding box of the object we want to track (make
@@ -346,6 +353,6 @@ if __name__ == '__main__':
     # diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
     # if inPath == "0":
     #     inPath = int(inPath)
-    inPath = "Videos/Ecem/Ecem4.mp4"
+    inPath = "Videos/Ecem/Ecem9.mp4"
     diskColour = "G"
     track(inPath, diskColour)
