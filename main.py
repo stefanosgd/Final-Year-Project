@@ -235,10 +235,10 @@ def track(videoPath, colourMask):
 
 
 if __name__ == '__main__':
-    inPath = input("Enter the path to the video, or 0 to use camera: ")
-    diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
-    if inPath == "0":
-        inPath = int(inPath)
-    # inPath = "Videos/Ecem/Ecem4.mp4"
-    # diskColour = "G"
+    # inPath = input("Enter the path to the video, or 0 to use camera: ")
+    # diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
+    # if inPath == "0":
+    #     inPath = int(inPath)
+    inPath = "Videos/Ecem/Ecem8.mp4"
+    diskColour = "Y"
     track(inPath, diskColour)
