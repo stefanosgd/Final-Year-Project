@@ -12,12 +12,13 @@ from os import startfile
 
 
 def track(videoPath, colourMask):
+    selectedTracker = "kcf"
     # extract the OpenCV version info
     (major, minor) = cv2.__version__.split(".")[:2]
     # if we are using OpenCV 3.2 OR BEFORE, we can use a special factory
     # function to create our object tracker
     if int(major) == 3 and int(minor) < 3:
-        tracker = cv2.Tracker_create("csrt")
+        tracker = cv2.Tracker_create(selectedTracker)
     # otherwise, for OpenCV 3.3 OR NEWER, we need to explicity call the
     # appropriate object tracker constructor:
     else:
@@ -34,7 +35,8 @@ def track(videoPath, colourMask):
         }
         # grab the appropriate object tracker using our dictionary of
         # OpenCV object tracker objects
-        tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
+
+        tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
     # initialize the bounding box coordinates of the object we are going
     # to track
     initBB = None
@@ -160,7 +162,7 @@ def track(videoPath, colourMask):
             # initialize the set of information we'll be displaying on
             # the frame
             info = [
-                ("Tracker", "csrt"),
+                ("Tracker", selectedTracker),
                 ("Success", "Yes" if success else "No"),
                 ("FPS", "{:.2f}".format(fps.fps())),
             ]
@@ -344,6 +346,6 @@ if __name__ == '__main__':
     # diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
     # if inPath == "0":
     #     inPath = int(inPath)
-    inPath = "Videos/Ecem/Ecem3.mp4"
-    diskColour = "Y"
+    inPath = "Videos/Ecem/Ecem4.mp4"
+    diskColour = "G"
     track(inPath, diskColour)
