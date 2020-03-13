@@ -41,7 +41,7 @@ def track(videoPath, colourMask):
     # to track
     initBB = None
 
-    pause_playback = True  # pause until key press after each image
+    pause_playback = False  # pause until key press after each image
 
     upper_black = np.array([100, 135, 155])
     lower_black = np.array([10, 110, 120])
@@ -228,14 +228,13 @@ def track(videoPath, colourMask):
                     # then update the list of tracked points
                     # cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
                     # initBB = cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
-                    # cv2.circle(frame, (int(x), int(y)), int(radius),
-                    #            (0, 255, 255), 2)
+                    cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
                     cv2.circle(frame, center, 5, (0, 0, 255), -1)
                     # start OpenCV object tracker using the supplied bounding box
                     # coordinates, then start the FPS throughput estimator as well
                     tracker.init(frame, initBB)
                     fps = FPS().start()
-                    pause_playback = not pause_playback
+                    # pause_playback = not pause_playback
 
             #        # update the points queue
             #        pts.insert(0, center)
@@ -285,7 +284,7 @@ def track(videoPath, colourMask):
         out.write(frame)
         cv2.imshow("Frame", frame)
         cv2.imshow("Mask", mask)
-        key = cv2.waitKey(10 * (not pause_playback)) & 0xFF
+        key = cv2.waitKey(10 * (pause_playback)) & 0xFF
 
         # show the output frame
         # cv2.imshow("Frame", frame)
@@ -293,20 +292,27 @@ def track(videoPath, colourMask):
         # if the 'r' key is selected, we are going to "select" a bounding
         # box to track
         if key == ord("r"):
-            pause_playback = not pause_playback
+            if pause_playback:
+                pause_playback = not pause_playback
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             initBB = None
             pts = []
-            # # select the bounding box of the object we want to track (make
-            # # sure you press ENTER or SPACE after selecting the ROI)
-            # initBB = cv2.selectROI("Frame", frame, fromCenter=False,
-            #                        showCrosshair=True)
-            # # start OpenCV object tracker using the supplied bounding box
-            # # coordinates, then start the FPS throughput estimator as well
-            # tracker.init(frame, initBB)
-            # fps = FPS().start()
-            # pause_playback = not pause_playback
         # if the 'q' key is pressed, stop the loop
+        elif key == ord("s"):
+            tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
+            # select the bounding box of the object we want to track (make
+            # sure you press ENTER or SPACE after selecting the ROI)
+            initBB = cv2.selectROI("Frame", frame, fromCenter=False,
+                                   showCrosshair=True)
+            pts = []
+            # start OpenCV object tracker using the supplied bounding box
+            # coordinates, then start the FPS throughput estimator as well
+            tracker.init(frame, initBB)
+            fps = FPS().start()
+            if pause_playback:
+                pause_playback = not pause_playback
+        elif key == ord(" "):
+            pause_playback = not pause_playback
         elif key == ord("q"):
             break
 
