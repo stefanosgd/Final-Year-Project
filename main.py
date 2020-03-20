@@ -4,6 +4,9 @@ import numpy as np
 import cv2
 import imutils
 import time
+from tkinter import filedialog
+import tkinter
+from PIL import Image, ImageTk
 
 from imutils.video import FPS
 from matplotlib import pyplot as plt
@@ -73,6 +76,7 @@ def track(videoPath, colourMask):
     weight_diameter = 450 / 1000  # mm
     start_x = 0
     start_y = 0
+    line_break = 0
 
     # initialize the list of tracked points, the frame counter,
     # and the coordinate deltas
@@ -92,7 +96,7 @@ def track(videoPath, colourMask):
 
     # allow the camera or video file to warm up
     time.sleep(2.0)
-    outputPath = videoPath.split(".")[0] + "OUT.avi"
+    outputPath = videoPath.split(".")[0] + "OUT.mp4"
     cv2.namedWindow('Frame')
 
 
@@ -155,7 +159,7 @@ def track(videoPath, colourMask):
                     displacement_y.append(displacement_y_calculated)
                     time_y.append(len(pts) / 25)
 
-                for i in range(1, len(pts)):
+                for i in range(1, len(pts)-line_break):
                     # if either of the tracked points are None, ignore
                     if pts[i - 1] is None or pts[i] is None:
                         continue
@@ -179,7 +183,7 @@ def track(videoPath, colourMask):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         if initBB is None:
-            out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 20, (W, H))
+            out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 20, (W, H))
             # Contours here
             ycbcr = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
 
@@ -297,6 +301,8 @@ def track(videoPath, colourMask):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             initBB = None
             pts = []
+        if key == ord("c"):
+            line_break = len(pts)
         # if the 'q' key is pressed, stop the loop
         elif key == ord("s"):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
@@ -309,7 +315,7 @@ def track(videoPath, colourMask):
             # coordinates, then start the FPS throughput estimator as well
             tracker.init(frame, initBB)
             fps = FPS().start()
-            if pause_playback:
+            if not pause_playback:
                 pause_playback = not pause_playback
         elif key == ord(" "):
             pause_playback = not pause_playback
@@ -354,11 +360,93 @@ def track(videoPath, colourMask):
     plt.show()
 
 
+def initialise_gui():
+
+    def file_select():
+        file = tkinter.filedialog.askopenfilename(initialdir="./Videos", title="Select File")
+        if len(file) > 0:
+            first_frame = None
+            file_location.set(file)
+            path_label.config(text=("The selected file is:\n " + file_location.get()))
+            path_label.grid(row=2, column=2, rowspan=2)
+            # Run Button
+            tkinter.Button(top, text="Track", command=start_tracking).grid(row=4, column=2)
+
+            vs = cv2.VideoCapture(file_location.get())
+            _, frame = vs.read()
+            frame = imutils.resize(frame, width=300)
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(image)
+            image = ImageTk.PhotoImage(image)
+            if first_frame is None:
+                first_frame = tkinter.Label(image=image)
+                first_frame.image = image
+                first_frame.grid(row=1, column=3, rowspan=7)
+            else:
+                first_frame.configure(image=image)
+                first_frame.image = image
+
+            vs.release()
+
+    def start_tracking():
+        print("Selected file was", file_location.get())
+        print("Final colour was", colour_choice.get())
+        track(file_location.get(), colour_choice.get())
+
+    top = tkinter.Tk()
+    colour_choice = tkinter.StringVar(value="K")
+    file_location = tkinter.StringVar(value="")
+    # widgets start here
+    tkinter.Label(top, text="Welcome To OW Tracker", font=("Ariel", 50)).grid(row=0, column=0, columnspan=5)
+    path_label = tkinter.Label(top)
+    # Weight Colour Selection
+    tkinter.Label(top, text="What colour weights are you using?").grid(row=1, column=0, columnspan=1)
+    tkinter.Radiobutton(top, text="Black", variable=colour_choice, value="K").grid(padx=75, row=2, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Blue", variable=colour_choice, value="B").grid(padx=75, row=3, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Yellow", variable=colour_choice, value="Y").grid(padx=75, row=4, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Green", variable=colour_choice, value="G").grid(padx=75, row=5, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Red", variable=colour_choice, value="R").grid(padx=75, row=6, column=0, sticky="W")
+
+    # File Selection Button
+    tkinter.Button(top, text="Select a video file", command=file_select).grid(row=1, column=2)
+
+    # widgets end here
+    top.mainloop()
+
+
 if __name__ == '__main__':
+    initialise_gui()
     # inPath = input("Enter the path to the video, or 0 to use camera: ")
     # diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
     # if inPath == "0":
     #     inPath = int(inPath)
-    inPath = "Videos/Ecem/Ecem9.mp4"
-    diskColour = "G"
-    track(inPath, diskColour)
+    # track(inPath, diskColour)
+    # inPath = "Videos/Sophie/Sophie1.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie2.mp4"
+    # diskColour = "Y"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie3.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie4.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie5.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie6.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+    #
+    # inPath = "Videos/Sophie/Sophie7.mp4"
+    # diskColour = "K"
+    # track(inPath, diskColour)
+
+
