@@ -145,19 +145,17 @@ def track(videoPath, colourMask):
                 if len(pts) == 1:
                     displacement_x = []
                     displacement_y = []
-                    time_x = []
-                    time_y = []
+                    time_axis = []
                     diameter = radius * 2
                     start_y, start_x = pts[0]
                 elif len(pts) % 3 == 0:
                     displacement_x_calculated = ((start_x - pts[0][1]) * weight_diameter) / diameter
                     displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
                     displacement_x.append(displacement_x_calculated)
-                    time_x.append(len(pts) / 25)
+                    time_axis.append(len(pts) / 30)
                     # if (displacement_y_calculated >= 0.1) or (displacement_y_calculated <= -0.1):
                     #     winsound.Beep(frequency, duration)
                     displacement_y.append(displacement_y_calculated)
-                    time_y.append(len(pts) / 25)
 
                 for i in range(1, len(pts)-line_break):
                     # if either of the tracked points are None, ignore
@@ -183,7 +181,7 @@ def track(videoPath, colourMask):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         if initBB is None:
-            out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 20, (W, H))
+            out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 30, (W, H))
             # Contours here
             ycbcr = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
 
@@ -240,51 +238,6 @@ def track(videoPath, colourMask):
                     fps = FPS().start()
                     # pause_playback = not pause_playback
 
-            #        # update the points queue
-            #        pts.insert(0, center)
-            #        # loop over the set of tracked points
-            #        if len(pts) == 1:
-            #            displacement_x = []
-            #            displacement_y = []
-            #            time_x = []
-            #            time_y = []
-            #            diameter = radius * 2
-            #            start_y, start_x = pts[0]
-            #        elif len(pts) % 3 == 0:
-            #            displacement_x_calculated = ((start_x - pts[0][1]) * weight_diameter) / diameter
-            #             displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
-            #             displacement_x.append(displacement_x_calculated)
-            #             time_x.append(len(pts) / 25)
-            #             # if (displacement_y_calculated >= 0.1) or (displacement_y_calculated <= -0.1):
-            #             #     winsound.Beep(frequency, duration)
-            #             displacement_y.append(displacement_y_calculated)
-            #             time_y.append(len(pts) / 25)
-            #
-            #     for i in range(1, len(pts)):
-            #         # if either of the tracked points are None, ignore
-            #         if pts[i - 1] is None or pts[i] is None:
-            #             continue
-            #
-            #         # draw the connecting lines
-            #         cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), 5)
-            #
-            # # HoughCircles code here (Worse than contours)
-            #
-            # #     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # #     circles = cv2.HoughCircles(gray_frame, cv2.HOUGH_GRADIENT, 1.2, 1000, minRadius=40, maxRadius=90)
-            # #     # ensure at least some circles were found
-            # #     if circles is not None:
-            # #         # convert the (x, y) coordinates and radius of the circles to integers
-            # #         circles = np.round(circles[0, :]).astype("int")
-            # #
-            # #         # loop over the (x, y) coordinates and radius of the circles
-            # #         for (x, y, r) in circles:
-            # #             # draw the circle in the output image, then draw a rectangle
-            # #             # corresponding to the center of the circle
-            # #             cv2.circle(frame, (x, y), r, (0, 255, 0), 4)
-            # #             cv2.rectangle(frame, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
-            # #
-            #
         out.write(frame)
         cv2.imshow("Frame", frame)
         cv2.imshow("Mask", mask)
@@ -323,6 +276,7 @@ def track(videoPath, colourMask):
             break
 
     vs.release()
+    out.release()
 
     # close all windows
     cv2.destroyAllWindows()
@@ -331,9 +285,9 @@ def track(videoPath, colourMask):
     # startfile(outputPath)
 
     plt.subplot(321)
-    plt.plot(time_x, displacement_x)
+    plt.plot(time_axis, displacement_x)
     plt.subplot(322)
-    plt.plot(time_y, displacement_y)
+    plt.plot(time_axis, displacement_y)
     new_velocity_x = np.gradient(displacement_x, 0.5)
     new_velocity_y = np.gradient(displacement_y, 0.5)
     acceleration_x = np.gradient(new_velocity_x, 0.5)
@@ -350,20 +304,21 @@ def track(videoPath, colourMask):
         else:
             energy_y.append(0)
     plt.subplot(323)
-    plt.plot(time_x, new_velocity_x)
+    plt.plot(time_axis, new_velocity_x)
     plt.subplot(324)
-    plt.plot(time_y, new_velocity_y)
+    plt.plot(time_axis, new_velocity_y)
     plt.subplot(325)
-    plt.plot(time_x, energy_x)
+    plt.plot(time_axis, energy_x)
     plt.subplot(326)
-    plt.plot(time_y, energy_y)
+    plt.plot(time_axis, energy_y)
     plt.show()
 
 
 def initialise_gui():
 
     def file_select():
-        file = tkinter.filedialog.askopenfilename(initialdir="./Videos", title="Select File")
+        file = tkinter.filedialog.askopenfilename(initialdir="./Videos", title="Select File",
+                                                  filetypes=[("Video", "*.MOV;*.MP4;*.AVI")])
         if len(file) > 0:
             first_frame = None
             file_location.set(file)
@@ -389,8 +344,6 @@ def initialise_gui():
             vs.release()
 
     def start_tracking():
-        print("Selected file was", file_location.get())
-        print("Final colour was", colour_choice.get())
         track(file_location.get(), colour_choice.get())
 
     top = tkinter.Tk()
