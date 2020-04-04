@@ -86,17 +86,18 @@ def track(videoPath, colourMask):
     if videoPath == 0:
         vs = cv2.VideoCapture(0)
         videoStream = True
+        outputPath = "Live_OUT.mp4"
     # otherwise, grab a reference to the video file
     else:
         vs = cv2.VideoCapture(videoPath)
         videoStream = False
+        outputPath = videoPath.split(".")[0] + "OUT.mp4"
 
     # initialize the FPS throughput estimator
     fps = None
 
     # allow the camera or video file to warm up
     time.sleep(2.0)
-    outputPath = videoPath.split(".")[0] + "OUT.mp4"
     cv2.namedWindow('Frame')
 
 
@@ -288,12 +289,12 @@ def track(videoPath, colourMask):
     plt.subplot(321)
     plt.grid()
     plt.title("Vertical vs Time")
-    plt.ylabel("Displacement")
+    plt.ylabel("Displacement (M)")
     plt.plot(time_axis, displacement_x)
     plt.subplot(322)
     plt.grid()
     plt.title("Horizontal vs Time")
-    plt.ylabel("Displacement")
+    plt.ylabel("Displacement (M)")
     plt.plot(time_axis, displacement_y)
     new_velocity_x = np.gradient(displacement_x, 0.5)
     new_velocity_y = np.gradient(displacement_y, 0.5)
@@ -302,7 +303,7 @@ def track(videoPath, colourMask):
     energy_x = []
     energy_y = []
     for i in range(0, len(new_velocity_x)):
-        if acceleration_x[i] >= 0:
+        if (acceleration_x[i] >= 0) and ((displacement_x[i] >= 0.1) or (new_velocity_x[i] >= 0)):
             energy_x.append(0.5 * 174 * (new_velocity_x[i] ** 2))
         else:
             energy_x.append(0)
@@ -312,19 +313,19 @@ def track(videoPath, colourMask):
             energy_y.append(0)
     plt.subplot(323)
     plt.grid()
-    plt.ylabel("Velocity")
+    plt.ylabel("Velocity (M/s)")
     plt.plot(time_axis, new_velocity_x)
     plt.subplot(324)
     plt.grid()
-    plt.ylabel("Velocity")
+    plt.ylabel("Velocity (M/s)")
     plt.plot(time_axis, new_velocity_y)
     plt.subplot(325)
     plt.grid()
-    plt.ylabel("Energy")
+    plt.ylabel("Energy (J)")
     plt.plot(time_axis, energy_x)
     plt.subplot(326)
     plt.grid()
-    plt.ylabel("Energy")
+    plt.ylabel("Energy (J)")
     plt.plot(time_axis, energy_y)
     plt.tight_layout(3.0)
     plt.show()
@@ -338,21 +339,21 @@ def initialise_gui():
         if len(file) > 0:
             first_frame = None
             file_location.set(file)
-            path_label.config(text=("The selected file is:\n " + file_location.get()))
-            path_label.grid(row=2, column=2, rowspan=2)
+            path_label.config(text=(file_location.get().split("/")[-1]), font=("Ariel", 10))
+            path_label.grid(row=2, column=1, padx=150, sticky="NW")
             # Run Button
-            tkinter.Button(top, text="Track", command=start_tracking).grid(row=4, column=2)
+            tkinter.Button(top, text="Track", command=start_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7, column=1)
 
             vs = cv2.VideoCapture(file_location.get())
             _, frame = vs.read()
-            frame = imutils.resize(frame, width=300)
+            frame = imutils.resize(frame, width=200)
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = Image.fromarray(image)
             image = ImageTk.PhotoImage(image)
             if first_frame is None:
                 first_frame = tkinter.Label(image=image)
                 first_frame.image = image
-                first_frame.grid(row=1, column=3, rowspan=7)
+                first_frame.grid(row=2, column=1, rowspan=5, sticky="S")
             else:
                 first_frame.configure(image=image)
                 first_frame.image = image
@@ -362,22 +363,28 @@ def initialise_gui():
     def start_tracking():
         track(file_location.get(), colour_choice.get())
 
+    def live_tracking():
+        track(0, colour_choice.get())
+
     top = tkinter.Tk()
+    top.geometry("575x550")
     colour_choice = tkinter.StringVar(value="K")
     file_location = tkinter.StringVar(value="")
     # widgets start here
-    tkinter.Label(top, text="Welcome To OW Tracker", font=("Ariel", 50)).grid(row=0, column=0, columnspan=5)
+    tkinter.Label(top, text="Welcome To OW Tracker", font=("Ariel", 35)).grid(padx=20, row=0, column=0, columnspan=7, sticky="W")
+
     path_label = tkinter.Label(top)
     # Weight Colour Selection
-    tkinter.Label(top, text="What colour weights are you using?").grid(row=1, column=0, columnspan=1)
-    tkinter.Radiobutton(top, text="Black", variable=colour_choice, value="K").grid(padx=75, row=2, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Blue", variable=colour_choice, value="B").grid(padx=75, row=3, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Yellow", variable=colour_choice, value="Y").grid(padx=75, row=4, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Green", variable=colour_choice, value="G").grid(padx=75, row=5, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Red", variable=colour_choice, value="R").grid(padx=75, row=6, column=0, sticky="W")
+    tkinter.Label(top, text="Weights Colour", font=("Ariel", 20)).grid(padx=25, row=1, column=0, columnspan=2, sticky="W")
+    tkinter.Radiobutton(top, text="Black", variable=colour_choice, value="K", font=("Ariel", 20)).grid(padx=55, pady=15, row=2, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Blue", variable=colour_choice, value="B", font=("Ariel", 20)).grid(padx=55, pady=15, row=3, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Yellow", variable=colour_choice, value="Y", font=("Ariel", 20)).grid(padx=55, pady=15, row=4, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Green", variable=colour_choice, value="G", font=("Ariel", 20)).grid(padx=55, pady=15, row=5, column=0, sticky="W")
+    tkinter.Radiobutton(top, text="Red", variable=colour_choice, value="R", font=("Ariel", 20)).grid(padx=55, pady=15, row=6, column=0, sticky="W")
 
     # File Selection Button
-    tkinter.Button(top, text="Select a video file", command=file_select).grid(row=1, column=2)
+    tkinter.Button(top, text="Select a video file", command=file_select, height=1, width=15, font=("Ariel", 13)).grid(padx=114, row=1, column=1)
+    tkinter.Button(top, text="Live", command=live_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7, column=0)
 
     # widgets end here
     top.mainloop()
