@@ -12,9 +12,13 @@ from imutils.video import FPS
 from matplotlib import pyplot as plt
 import winsound
 from os import startfile
+import os
 
 
 def track(videoPath, colourMask):
+    new_path = True
+    total_frames = 0
+    dropped_frames = 0
     selectedTracker = "kcf"
     # extract the OpenCV version info
     (major, minor) = cv2.__version__.split(".")[:2]
@@ -34,7 +38,8 @@ def track(videoPath, colourMask):
             "mil": cv2.TrackerMIL_create,
             "tld": cv2.TrackerTLD_create,
             "medianflow": cv2.TrackerMedianFlow_create,
-            "mosse": cv2.TrackerMOSSE_create
+            "mosse": cv2.TrackerMOSSE_create,
+            "goturn": cv2.TrackerGOTURN_create
         }
         # grab the appropriate object tracker using our dictionary of
         # OpenCV object tracker objects
@@ -84,9 +89,9 @@ def track(videoPath, colourMask):
     # if a video path was not supplied, grab the reference
     # to the webcam
     if videoPath == 0:
-        vs = cv2.VideoCapture(0)
+        vs = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         videoStream = True
-        outputPath = "Live_OUT.mp4"
+        outputPath = "./Videos/Live/LiveOUT.mp4"
     # otherwise, grab a reference to the video file
     else:
         vs = cv2.VideoCapture(videoPath)
@@ -100,7 +105,6 @@ def track(videoPath, colourMask):
     time.sleep(2.0)
     cv2.namedWindow('Frame')
 
-
     # keep looping
     while True:
         # grab the current frame
@@ -108,9 +112,6 @@ def track(videoPath, colourMask):
             ret, frame = vs.read()
         else:
             ret, frame = vs.read()
-            # frame = frame[0:frame.shape[0], 300:(frame.shape[1] - 300)]
-            # print(frame.shape)
-            # frame = ret, frame
 
         # if we are viewing a video and we did not grab a frame,
         # then we have reached the end of the video
@@ -123,6 +124,7 @@ def track(videoPath, colourMask):
         frame = imutils.resize(frame, width=500)
         (H, W) = frame.shape[:2]
 
+        clean_frame = frame.copy()
         # check to see if we are currently tracking an object
         if initBB is not None:
             # grab the new bounding box coordinates of the object
@@ -131,7 +133,7 @@ def track(videoPath, colourMask):
             if success:
                 (x, y, w, h) = [int(v) for v in box]
                 # cv2.circle(frame, (x+int(w/2), y+int(h/2)), int(w/2), (0, 255, 0), 2)
-                (center, radius) = (x+int(w/2), y+int(h/2)), int(w/2)
+                (center, diameter) = (x + int(w / 2), y + int(h / 2)), int(w)
                 # center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
                 # draw the circle and centroid on the frame,
@@ -139,16 +141,17 @@ def track(videoPath, colourMask):
                 # cv2.circle(frame, center, int(radius),
                 #            (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
+                cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
 
                 # update the points queue
                 pts.insert(0, center)
                 # loop over the set of tracked points
                 if len(pts) == 1:
-                    displacement_x = []
-                    displacement_y = []
-                    time_axis = []
-                    diameter = radius * 2
                     start_y, start_x = pts[0]
+                    # diameter = radius * 2
+                    displacement_x = [0]
+                    displacement_y = [0]
+                    time_axis = [0]
                 elif len(pts) % 3 == 0:
                     displacement_x_calculated = ((start_x - pts[0][1]) * weight_diameter) / diameter
                     displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
@@ -158,14 +161,18 @@ def track(videoPath, colourMask):
                     #     winsound.Beep(frequency, duration)
                     displacement_y.append(displacement_y_calculated)
 
-                for i in range(1, len(pts)-line_break):
+                for i in range(1, len(pts) - line_break):
                     # if either of the tracked points are None, ignore
                     if pts[i - 1] is None or pts[i] is None:
                         continue
 
                     # draw the connecting lines
                     cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), 5)
+            else:
+                dropped_frames += 1
+            total_frames += 1
             # update the FPS counter
+
             fps.update()
             fps.stop()
             # initialize the set of information we'll be displaying on
@@ -180,27 +187,26 @@ def track(videoPath, colourMask):
                 text = "{}: {}".format(k, v)
                 cv2.putText(frame, text, (10, H - ((i * 20) + 20)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
-        if initBB is None:
+        else:
             out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 30, (W, H))
             # Contours here
-            ycbcr = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+            ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
 
             # Threshold the YCrCb image to get only blue colors
             if colourMask == "B":
-                mask = cv2.inRange(ycbcr, lower_blue, upper_blue)
+                mask = cv2.inRange(ycrcb, lower_blue, upper_blue)
             elif colourMask == "Y":
                 # Threshold the YCrCb image to get only yellow colors
-                mask = cv2.inRange(ycbcr, lower_yellow, upper_yellow)
+                mask = cv2.inRange(ycrcb, lower_yellow, upper_yellow)
             elif colourMask == "G":
                 # Threshold the YCrCb image to get only green colors
-                mask = cv2.inRange(ycbcr, lower_green, upper_green)
+                mask = cv2.inRange(ycrcb, lower_green, upper_green)
             elif colourMask == "R":
                 # Threshold the YCrCb image to get only red colors
-                mask = cv2.inRange(ycbcr, lower_red, upper_red)
+                mask = cv2.inRange(ycrcb, lower_red, upper_red)
             else:
                 # Threshold the YCrCb image to get only red colors
-                mask = cv2.inRange(ycbcr, lower_black, upper_black)
+                mask = cv2.inRange(ycrcb, lower_black, upper_black)
 
             mask = cv2.erode(mask, None, iterations=3)
 
@@ -222,8 +228,8 @@ def track(videoPath, colourMask):
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
                 M = cv2.moments(c)
                 # center = (int(x), int(y))
-                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
+                start_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                start_center_top = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]) - 600)
                 # only proceed if the radius meets a minimum size
                 if 50 < radius < 150:
                     initBB = cv2.boundingRect(c)
@@ -232,7 +238,8 @@ def track(videoPath, colourMask):
                     # cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
                     # initBB = cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
                     cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
-                    cv2.circle(frame, center, 5, (0, 0, 255), -1)
+                    cv2.circle(frame, start_center, 5, (0, 0, 255), -1)
+                    cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
                     # start OpenCV object tracker using the supplied bounding box
                     # coordinates, then start the FPS throughput estimator as well
                     tracker.init(frame, initBB)
@@ -241,7 +248,7 @@ def track(videoPath, colourMask):
 
         out.write(frame)
         cv2.imshow("Frame", frame)
-        cv2.imshow("Mask", mask)
+        # cv2.imshow("Mask", mask)
         key = cv2.waitKey(10 * (pause_playback)) & 0xFF
 
         # show the output frame
@@ -255,20 +262,25 @@ def track(videoPath, colourMask):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             initBB = None
             pts = []
-        if key == ord("c"):
+        if key == ord("a"):
             line_break = len(pts)
         # if the 'q' key is pressed, stop the loop
         elif key == ord("s"):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
+            # create a text trap and redirect stdout
             # select the bounding box of the object we want to track (make
             # sure you press ENTER or SPACE after selecting the ROI)
-            initBB = cv2.selectROI("Frame", frame, fromCenter=False,
+            initBB = cv2.selectROI("Frame", clean_frame, fromCenter=False,
                                    showCrosshair=True)
+            start_center = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2))
+            start_center_top = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2) - 600)
+            cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
             pts = []
             # start OpenCV object tracker using the supplied bounding box
             # coordinates, then start the FPS throughput estimator as well
             tracker.init(frame, initBB)
             fps = FPS().start()
+
             if not pause_playback:
                 pause_playback = not pause_playback
         elif key == ord(" "):
@@ -281,6 +293,15 @@ def track(videoPath, colourMask):
 
     # close all windows
     cv2.destroyAllWindows()
+
+    # output the accuracy
+    if not videoStream:
+        print(videoPath)
+    else:
+        print("Live video")
+    print("Total frames: {}".format(total_frames))
+    print("Dropped frames: {}".format(dropped_frames))
+    print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
 
     # open video in local video player
     # startfile(outputPath)
@@ -296,19 +317,20 @@ def track(videoPath, colourMask):
     plt.title("Horizontal vs Time")
     plt.ylabel("Displacement (M)")
     plt.plot(time_axis, displacement_y)
-    new_velocity_x = np.gradient(displacement_x, 0.5)
-    new_velocity_y = np.gradient(displacement_y, 0.5)
-    acceleration_x = np.gradient(new_velocity_x, 0.5)
-    acceleration_y = np.gradient(new_velocity_y, 0.5)
+
+    new_velocity_x = np.gradient(displacement_x, time_axis)  # was -> , 0.5)
+    new_velocity_y = np.gradient(displacement_y, time_axis)
+    acceleration_x = np.gradient(new_velocity_x, time_axis)
+    acceleration_y = np.gradient(new_velocity_y, time_axis)
     energy_x = []
     energy_y = []
     for i in range(0, len(new_velocity_x)):
         if (acceleration_x[i] >= 0) and ((displacement_x[i] >= 0.1) or (new_velocity_x[i] >= 0)):
-            energy_x.append(0.5 * 174 * (new_velocity_x[i] ** 2))
+            energy_x.append(0.5 * 40 * (new_velocity_x[i] ** 2))
         else:
             energy_x.append(0)
         if acceleration_y[i] >= 0:
-            energy_y.append(0.5 * 174 * (new_velocity_y[i] ** 2))
+            energy_y.append(0.5 * 40 * (new_velocity_y[i] ** 2))
         else:
             energy_y.append(0)
     plt.subplot(323)
@@ -332,17 +354,16 @@ def track(videoPath, colourMask):
 
 
 def initialise_gui():
-
     def file_select():
         file = tkinter.filedialog.askopenfilename(initialdir="./Videos", title="Select File",
                                                   filetypes=[("Video", "*.MOV;*.MP4;*.AVI")])
         if len(file) > 0:
-            first_frame = None
             file_location.set(file)
             path_label.config(text=(file_location.get().split("/")[-1]), font=("Ariel", 10))
-            path_label.grid(row=2, column=1, padx=150, sticky="NW")
+            path_label.grid(row=2, column=1, padx=150, sticky="NW", rowspan=5)
             # Run Button
-            tkinter.Button(top, text="Track", command=start_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7, column=1)
+            tkinter.Button(top, text="Track", command=start_tracking, height=1, width=10, font=("Ariel", 25)).grid(
+                row=7, column=1)
 
             vs = cv2.VideoCapture(file_location.get())
             _, frame = vs.read()
@@ -350,15 +371,13 @@ def initialise_gui():
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = Image.fromarray(image)
             image = ImageTk.PhotoImage(image)
-            if first_frame is None:
-                first_frame = tkinter.Label(image=image)
-                first_frame.image = image
-                first_frame.grid(row=2, column=1, rowspan=5, sticky="S")
-            else:
-                first_frame.configure(image=image)
-                first_frame.image = image
+
+            first_frame.configure(image=image)
+            first_frame.image = image
+            first_frame.grid(row=2, column=1, rowspan=5, sticky="S")
 
             vs.release()
+            cv2.destroyAllWindows()
 
     def start_tracking():
         track(file_location.get(), colour_choice.get())
@@ -370,22 +389,41 @@ def initialise_gui():
     top.geometry("575x550")
     colour_choice = tkinter.StringVar(value="K")
     file_location = tkinter.StringVar(value="")
-    # widgets start here
-    tkinter.Label(top, text="Welcome To OW Tracker", font=("Ariel", 35)).grid(padx=20, row=0, column=0, columnspan=7, sticky="W")
+    first_frame = tkinter.Label(image=None)
 
-    path_label = tkinter.Label(top)
+    # widgets start here
+    tkinter.Label(top, text="Welcome To OW Tracker", font=("Ariel", 35)).grid(padx=20, row=0, column=0, columnspan=7,
+                                                                              sticky="W")
+
+    path_label = tkinter.Label(top, wraplength=70)
     # Weight Colour Selection
-    tkinter.Label(top, text="Weights Colour", font=("Ariel", 20)).grid(padx=25, row=1, column=0, columnspan=2, sticky="W")
-    tkinter.Radiobutton(top, text="Black", variable=colour_choice, value="K", font=("Ariel", 20)).grid(padx=55, pady=15, row=2, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Blue", variable=colour_choice, value="B", font=("Ariel", 20)).grid(padx=55, pady=15, row=3, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Yellow", variable=colour_choice, value="Y", font=("Ariel", 20)).grid(padx=55, pady=15, row=4, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Green", variable=colour_choice, value="G", font=("Ariel", 20)).grid(padx=55, pady=15, row=5, column=0, sticky="W")
-    tkinter.Radiobutton(top, text="Red", variable=colour_choice, value="R", font=("Ariel", 20)).grid(padx=55, pady=15, row=6, column=0, sticky="W")
+    tkinter.Label(top, text="Weights Colour", font=("Ariel", 20)).grid(padx=25, row=1, column=0, columnspan=2,
+                                                                       sticky="W")
+    tkinter.Radiobutton(top, text="Black", variable=colour_choice, value="K", font=("Ariel", 20)).grid(padx=55, pady=15,
+                                                                                                       row=2, column=0,
+                                                                                                       sticky="W")
+    tkinter.Radiobutton(top, text="Blue", variable=colour_choice, value="B", font=("Ariel", 20)).grid(padx=55, pady=15,
+                                                                                                      row=3, column=0,
+                                                                                                      sticky="W")
+    tkinter.Radiobutton(top, text="Yellow", variable=colour_choice, value="Y", font=("Ariel", 20)).grid(padx=55,
+                                                                                                        pady=15, row=4,
+                                                                                                        column=0,
+                                                                                                        sticky="W")
+    tkinter.Radiobutton(top, text="Green", variable=colour_choice, value="G", font=("Ariel", 20)).grid(padx=55, pady=15,
+                                                                                                       row=5, column=0,
+                                                                                                       sticky="W")
+    tkinter.Radiobutton(top, text="Red", variable=colour_choice, value="R", font=("Ariel", 20)).grid(padx=55, pady=15,
+                                                                                                     row=6, column=0,
+                                                                                                     sticky="W")
 
     # File Selection Button
-    tkinter.Button(top, text="Select a video file", command=file_select, height=1, width=15, font=("Ariel", 13)).grid(padx=114, row=1, column=1)
-    tkinter.Button(top, text="Live", command=live_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7, column=0)
-
+    tkinter.Button(top, text="Select a video file", command=file_select, height=1, width=15, font=("Ariel", 13)).grid(
+        padx=114, row=1, column=1)
+    tkinter.Button(top, text="Live", command=live_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7,
+                                                                                                         column=0)
+    # todo add weight input
+    # todo add tracking input
+    # todo make live tracking have sound alarm
     # widgets end here
     top.mainloop()
 
@@ -424,5 +462,3 @@ if __name__ == '__main__':
     # inPath = "Videos/Sophie/Sophie7.mp4"
     # diskColour = "K"
     # track(inPath, diskColour)
-
-
