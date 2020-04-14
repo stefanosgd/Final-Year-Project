@@ -160,8 +160,8 @@ def track(videoPath, colourMask):
                     displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
                     displacement_x.append(displacement_x_calculated)
                     time_axis.append(len(pts) / 30)
-                    # if (displacement_y_calculated >= 0.1) or (displacement_y_calculated <= -0.1):
-                    #     winsound.Beep(frequency, duration)
+                    if ((displacement_y_calculated >= 0.4) or (displacement_y_calculated <= -0.2)) and videoStream:
+                        winsound.Beep(1000, 100)
                     displacement_y.append(displacement_y_calculated)
 
                 for i in range(1, len(pts) - line_break):
@@ -170,7 +170,7 @@ def track(videoPath, colourMask):
                         continue
 
                     # draw the connecting lines
-                    cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), 5)
+                    cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), 3)
             else:
                 dropped_frames += 1
             total_frames += 1
@@ -193,7 +193,7 @@ def track(videoPath, colourMask):
         else:
             out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 30, (W, H))
             # Contours here
-            ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+            ycrcb = cv2.cvtColor(cv2.blur(frame, (3, 3)), cv2.COLOR_BGR2YCR_CB)
 
             # Threshold the YCrCb image to get only blue colors
             if colourMask == "B":
@@ -211,21 +211,13 @@ def track(videoPath, colourMask):
                 # Threshold the YCrCb image to get only black colors
                 mask = cv2.inRange(ycrcb, lower_black, upper_black)
 
-            cv2.imshow("Before", mask)
-            mask = cv2.erode(mask, None, iterations=3)
+            mask = cv2.erode(mask, None, iterations=4)
 
             mask = cv2.dilate(mask, None, iterations=3)
-            cv2.imshow("During", mask)
-
-            mask = cv2.erode(mask, None, iterations=3)
-
-            mask = cv2.dilate(mask, None, iterations=3)
-            cv2.imshow("After", mask)
 
             # find contours in the mask and initialize the current
             # (x, y) center of the ball
-
-            cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = cv2.findContours(mask.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts = imutils.grab_contours(cnts)
             center = None
 
@@ -236,36 +228,28 @@ def track(videoPath, colourMask):
                 # centroid
                 c = max(cnts, key=cv2.contourArea)
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
-                M = cv2.moments(c)
-                # center = (int(x), int(y))
-                start_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-                start_center_top = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]) - 600)
+                start_center = (int(x), int(y))
+                start_center_top = (int(x), int(y)-600)
                 # only proceed if the radius meets a minimum size
-                if 50 < radius < 150:
+                if 50 < radius < 250:
                     initBB = cv2.boundingRect(c)
                     # draw the circle and centroid on the frame,
-                    # then update the list of tracked points
-                    # cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
-                    # initBB = cv2.rectangle(frame,(int(x-radius),int(y-radius)),(int(x+radius),int(y+radius)),(0,255,0),2)
+                    # then initialise the tracker
                     cv2.circle(frame, (int(x), int(y)), int(radius), (0, 255, 255), 2)
                     cv2.circle(frame, start_center, 5, (0, 0, 255), -1)
-                    cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
+                    cv2.line(frame, start_center, start_center_top, (0, 255, 0), 3)
                     # start OpenCV object tracker using the supplied bounding box
                     # coordinates, then start the FPS throughput estimator as well
                     tracker.init(frame, initBB)
                     fps = FPS().start()
-                    # pause_playback = not pause_playback
-
-        out.write(frame)
-        cv2.imshow("Frame", frame)
-        cv2.imshow("Mask", mask)
-        key = cv2.waitKey(10 * (pause_playback)) & 0xFF
 
         # show the output frame
-        # cv2.imshow("Frame", frame)
-        # key = cv2.waitKey(1) & 0xFF
-        # if the 'r' key is selected, we are going to "select" a bounding
-        # box to track
+        out.write(frame)
+        cv2.imshow("Frame", frame)
+        # cv2.imshow("Mask", mask)
+        key = cv2.waitKey(1 * pause_playback) & 0xFF
+
+        # if the 'r' key is selected, we are going to "select" a bounding box to track
         if key == ord("r"):
             if pause_playback:
                 pause_playback = not pause_playback
@@ -274,7 +258,7 @@ def track(videoPath, colourMask):
             pts = []
         if key == ord("a"):
             line_break = len(pts)
-        # if the 'q' key is pressed, stop the loop
+        # if the 's' key is selected, we are going to select a bounding box to track
         elif key == ord("s"):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             # create a text trap and redirect stdout
@@ -295,6 +279,7 @@ def track(videoPath, colourMask):
                 pause_playback = not pause_playback
         elif key == ord(" "):
             pause_playback = not pause_playback
+        # if the 'q' key is pressed, stop the loop
         elif key == ord("q"):
             break
 
@@ -434,7 +419,6 @@ def initialise_gui():
                                                                                                          column=0)
     # todo add weight input
     # todo add tracking input
-    # todo make live tracking have sound alarm
     # widgets end here
     top.mainloop()
 
