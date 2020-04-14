@@ -152,9 +152,6 @@ def track(videoPath, colourMask):
                 if len(pts) == 1:
                     start_y, start_x = pts[0]
                     # diameter = radius * 2
-                    displacement_x = [0]
-                    displacement_y = [0]
-                    time_axis = [0]
                 elif len(pts) % 3 == 0:
                     displacement_x_calculated = ((start_x - pts[0][1]) * weight_diameter) / diameter
                     displacement_y_calculated = ((pts[0][0] - start_y) * weight_diameter) / diameter
@@ -256,6 +253,9 @@ def track(videoPath, colourMask):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
             initBB = None
             pts = []
+            displacement_x = [0]
+            displacement_y = [0]
+            time_axis = [0]
         if key == ord("a"):
             line_break = len(pts)
         # if the 's' key is selected, we are going to select a bounding box to track
