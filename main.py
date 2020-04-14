@@ -82,6 +82,9 @@ def track(videoPath, colourMask):
     start_x = 0
     start_y = 0
     line_break = 0
+    displacement_x = [0]
+    displacement_y = [0]
+    time_axis = [0]
 
     # initialize the list of tracked points, the frame counter,
     # and the coordinate deltas
@@ -205,12 +208,19 @@ def track(videoPath, colourMask):
                 # Threshold the YCrCb image to get only red colors
                 mask = cv2.inRange(ycrcb, lower_red, upper_red)
             else:
-                # Threshold the YCrCb image to get only red colors
+                # Threshold the YCrCb image to get only black colors
                 mask = cv2.inRange(ycrcb, lower_black, upper_black)
+
+            cv2.imshow("Before", mask)
+            mask = cv2.erode(mask, None, iterations=3)
+
+            mask = cv2.dilate(mask, None, iterations=3)
+            cv2.imshow("During", mask)
 
             mask = cv2.erode(mask, None, iterations=3)
 
             mask = cv2.dilate(mask, None, iterations=3)
+            cv2.imshow("After", mask)
 
             # find contours in the mask and initialize the current
             # (x, y) center of the ball
@@ -248,7 +258,7 @@ def track(videoPath, colourMask):
 
         out.write(frame)
         cv2.imshow("Frame", frame)
-        # cv2.imshow("Mask", mask)
+        cv2.imshow("Mask", mask)
         key = cv2.waitKey(10 * (pause_playback)) & 0xFF
 
         # show the output frame
@@ -294,63 +304,64 @@ def track(videoPath, colourMask):
     # close all windows
     cv2.destroyAllWindows()
 
+    # todo delete
     # output the accuracy
-    if not videoStream:
-        print(videoPath)
-    else:
-        print("Live video")
-    print("Total frames: {}".format(total_frames))
-    print("Dropped frames: {}".format(dropped_frames))
-    print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
+    # if not videoStream:
+    #     print(videoPath)
+    # else:
+    #     print("Live video")
+    # print("Total frames: {}".format(total_frames))
+    # print("Dropped frames: {}".format(dropped_frames))
+    # print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
 
     # open video in local video player
     # startfile(outputPath)
+    if len(time_axis) > 1:
+        plt.figure(figsize=(15, 8))
+        plt.subplot(321)
+        plt.grid()
+        plt.title("Vertical vs Time")
+        plt.ylabel("Displacement (M)")
+        plt.plot(time_axis, displacement_x)
+        plt.subplot(322)
+        plt.grid()
+        plt.title("Horizontal vs Time")
+        plt.ylabel("Displacement (M)")
+        plt.plot(time_axis, displacement_y)
 
-    plt.figure(figsize=(15, 8))
-    plt.subplot(321)
-    plt.grid()
-    plt.title("Vertical vs Time")
-    plt.ylabel("Displacement (M)")
-    plt.plot(time_axis, displacement_x)
-    plt.subplot(322)
-    plt.grid()
-    plt.title("Horizontal vs Time")
-    plt.ylabel("Displacement (M)")
-    plt.plot(time_axis, displacement_y)
-
-    new_velocity_x = np.gradient(displacement_x, time_axis)  # was -> , 0.5)
-    new_velocity_y = np.gradient(displacement_y, time_axis)
-    acceleration_x = np.gradient(new_velocity_x, time_axis)
-    acceleration_y = np.gradient(new_velocity_y, time_axis)
-    energy_x = []
-    energy_y = []
-    for i in range(0, len(new_velocity_x)):
-        if (acceleration_x[i] >= 0) and ((displacement_x[i] >= 0.1) or (new_velocity_x[i] >= 0)):
-            energy_x.append(0.5 * 40 * (new_velocity_x[i] ** 2))
-        else:
-            energy_x.append(0)
-        if acceleration_y[i] >= 0:
-            energy_y.append(0.5 * 40 * (new_velocity_y[i] ** 2))
-        else:
-            energy_y.append(0)
-    plt.subplot(323)
-    plt.grid()
-    plt.ylabel("Velocity (M/s)")
-    plt.plot(time_axis, new_velocity_x)
-    plt.subplot(324)
-    plt.grid()
-    plt.ylabel("Velocity (M/s)")
-    plt.plot(time_axis, new_velocity_y)
-    plt.subplot(325)
-    plt.grid()
-    plt.ylabel("Energy (J)")
-    plt.plot(time_axis, energy_x)
-    plt.subplot(326)
-    plt.grid()
-    plt.ylabel("Energy (J)")
-    plt.plot(time_axis, energy_y)
-    plt.tight_layout(3.0)
-    plt.show()
+        new_velocity_x = np.gradient(displacement_x, time_axis)  # was -> , 0.5)
+        new_velocity_y = np.gradient(displacement_y, time_axis)
+        acceleration_x = np.gradient(new_velocity_x, time_axis)
+        acceleration_y = np.gradient(new_velocity_y, time_axis)
+        energy_x = []
+        energy_y = []
+        for i in range(0, len(new_velocity_x)):
+            if (acceleration_x[i] >= 0) and ((displacement_x[i] >= 0.1) or (new_velocity_x[i] >= 0)):
+                energy_x.append(0.5 * 40 * (new_velocity_x[i] ** 2))
+            else:
+                energy_x.append(0)
+            if acceleration_y[i] >= 0:
+                energy_y.append(0.5 * 40 * (new_velocity_y[i] ** 2))
+            else:
+                energy_y.append(0)
+        plt.subplot(323)
+        plt.grid()
+        plt.ylabel("Velocity (M/s)")
+        plt.plot(time_axis, new_velocity_x)
+        plt.subplot(324)
+        plt.grid()
+        plt.ylabel("Velocity (M/s)")
+        plt.plot(time_axis, new_velocity_y)
+        plt.subplot(325)
+        plt.grid()
+        plt.ylabel("Energy (J)")
+        plt.plot(time_axis, energy_x)
+        plt.subplot(326)
+        plt.grid()
+        plt.ylabel("Energy (J)")
+        plt.plot(time_axis, energy_y)
+        plt.tight_layout(3.0)
+        plt.show()
 
 
 def initialise_gui():
