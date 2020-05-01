@@ -13,7 +13,6 @@ import winsound
 
 
 def track(videoPath, colourMask, totalWeight):
-    new_path = True
     total_frames = 0
     dropped_frames = 0
     selectedTracker = "mosse"
@@ -236,6 +235,10 @@ def track(videoPath, colourMask, totalWeight):
         # if the 's' key is selected, we are going to select a bounding box to track
         elif key == ord("s"):
             tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
+            pts = []
+            displacement_x = [0]
+            displacement_y = [0]
+            time_axis = [0]
             # create a text trap and redirect stdout
             # select the bounding box of the object we want to track (make
             # sure you press ENTER or SPACE after selecting the ROI)
@@ -244,7 +247,6 @@ def track(videoPath, colourMask, totalWeight):
             start_center = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2))
             start_center_top = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2) - 600)
             cv2.line(frame, start_center, start_center_top, (0, 255, 0), 3)
-            pts = []
             # start OpenCV object tracker using the supplied bounding box
             # coordinates, then start the FPS throughput estimator as well
             tracker.init(frame, initBB)
@@ -263,12 +265,6 @@ def track(videoPath, colourMask, totalWeight):
 
     # close all windows
     cv2.destroyAllWindows()
-
-    # todo delete
-    # output the accuracy
-    # print("Total frames: {}".format(total_frames))
-    # print("Dropped frames: {}".format(dropped_frames))
-    # print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
 
     if len(time_axis) > 1:
         plt.figure(figsize=(15, 8))
