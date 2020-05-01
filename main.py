@@ -1,50 +1,39 @@
 # import the necessary packages
-from collections import deque
 import numpy as np
 import cv2
 import imutils
 import time
-from tkinter import filedialog
 import tkinter
+from tkinter import filedialog
+from tkinter import messagebox
 from PIL import Image, ImageTk
-
 from imutils.video import FPS
 from matplotlib import pyplot as plt
 import winsound
 from os import startfile
-import os
 
 
-def track(videoPath, colourMask):
+def track(videoPath, colourMask, totalWeight):
     new_path = True
     total_frames = 0
     dropped_frames = 0
-    selectedTracker = "kcf"
-    # extract the OpenCV version info
-    (major, minor) = cv2.__version__.split(".")[:2]
-    # if we are using OpenCV 3.2 OR BEFORE, we can use a special factory
-    # function to create our object tracker
-    if int(major) == 3 and int(minor) < 3:
-        tracker = cv2.Tracker_create(selectedTracker)
-    # otherwise, for OpenCV 3.3 OR NEWER, we need to explicity call the
-    # appropriate object tracker constructor:
-    else:
-        # initialize a dictionary that maps strings to their corresponding
-        # OpenCV object tracker implementations
-        OPENCV_OBJECT_TRACKERS = {
-            "csrt": cv2.TrackerCSRT_create,
-            "kcf": cv2.TrackerKCF_create,
-            "boosting": cv2.TrackerBoosting_create,
-            "mil": cv2.TrackerMIL_create,
-            "tld": cv2.TrackerTLD_create,
-            "medianflow": cv2.TrackerMedianFlow_create,
-            "mosse": cv2.TrackerMOSSE_create,
-            "goturn": cv2.TrackerGOTURN_create
-        }
-        # grab the appropriate object tracker using our dictionary of
-        # OpenCV object tracker objects
+    selectedTracker = "mosse"
 
-        tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
+    # initialize a dictionary that maps strings to their corresponding OpenCV object tracker implementations
+    OPENCV_OBJECT_TRACKERS = {
+        "csrt": cv2.TrackerCSRT_create,
+        "kcf": cv2.TrackerKCF_create,
+        "boosting": cv2.TrackerBoosting_create,
+        "mil": cv2.TrackerMIL_create,
+        "tld": cv2.TrackerTLD_create,
+        "medianflow": cv2.TrackerMedianFlow_create,
+        "mosse": cv2.TrackerMOSSE_create,
+        "goturn": cv2.TrackerGOTURN_create
+    }
+
+    # grab the appropriate object tracker using our dictionary of OpenCV object tracker objects
+    tracker = OPENCV_OBJECT_TRACKERS[selectedTracker]()
+
     # initialize the bounding box coordinates of the object we are going
     # to track
     initBB = None
@@ -55,26 +44,18 @@ def track(videoPath, colourMask):
     lower_black = np.array([10, 110, 120])
 
     # define range of blue color in YCrCb
-    # lower_blue = np.array([90, 100, 10])
-    # upper_blue = np.array([120, 255, 130])
     upper_blue = np.array([60, 130, 150])
     lower_blue = np.array([20, 115, 130])
 
     # define range of yellow color in YCrCb
-    # lower_yellow = np.array([20, 200, 150])
-    # upper_yellow = np.array([30, 255, 230])
     upper_yellow = np.array([255, 170, 90])
     lower_yellow = np.array([0, 50, 10])
 
     # define range of green color in YCrCb
-    # lower_green = np.array([50, 100, 10])
-    # upper_green = np.array([115, 155, 50])
     upper_green = np.array([255, 110, 130])
     lower_green = np.array([0, 10, 10])
 
     # define range of red color in YCrCb
-    # lower_red = np.array([160, 200, 20])
-    # upper_red = np.array([190, 255, 60])
     upper_red = np.array([255, 131, 176])
     lower_red = np.array([100, 111, 153])
 
@@ -144,7 +125,7 @@ def track(videoPath, colourMask):
                 # cv2.circle(frame, center, int(radius),
                 #            (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
-                cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
+                cv2.line(frame, start_center, start_center_top, (0, 255, 0), 3)
 
                 # update the points queue
                 pts.insert(0, center)
@@ -181,6 +162,7 @@ def track(videoPath, colourMask):
                 ("Tracker", selectedTracker),
                 ("Success", "Yes" if success else "No"),
                 ("FPS", "{:.2f}".format(fps.fps())),
+                ("Weight", "{} KG".format(totalWeight)),
             ]
             # loop over the info tuples and draw them on our frame
             for (i, (k, v)) in enumerate(info):
@@ -268,7 +250,7 @@ def track(videoPath, colourMask):
                                    showCrosshair=True)
             start_center = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2))
             start_center_top = (initBB[0] + int(initBB[2]/2), initBB[1] + int(initBB[3]/2) - 600)
-            cv2.line(frame, start_center, start_center_top, (0, 255, 0), 4)
+            cv2.line(frame, start_center, start_center_top, (0, 255, 0), 3)
             pts = []
             # start OpenCV object tracker using the supplied bounding box
             # coordinates, then start the FPS throughput estimator as well
@@ -291,16 +273,13 @@ def track(videoPath, colourMask):
 
     # todo delete
     # output the accuracy
-    # if not videoStream:
-    #     print(videoPath)
-    # else:
-    #     print("Live video")
     # print("Total frames: {}".format(total_frames))
     # print("Dropped frames: {}".format(dropped_frames))
     # print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
 
     # open video in local video player
     # startfile(outputPath)
+
     if len(time_axis) > 1:
         plt.figure(figsize=(15, 8))
         plt.subplot(321)
@@ -322,11 +301,11 @@ def track(videoPath, colourMask):
         energy_y = []
         for i in range(0, len(new_velocity_x)):
             if (acceleration_x[i] >= 0) and ((displacement_x[i] >= 0.1) or (new_velocity_x[i] >= 0)):
-                energy_x.append(0.5 * 40 * (new_velocity_x[i] ** 2))
+                energy_x.append(0.5 * totalWeight * (new_velocity_x[i] ** 2))
             else:
                 energy_x.append(0)
             if acceleration_y[i] >= 0:
-                energy_y.append(0.5 * 40 * (new_velocity_y[i] ** 2))
+                energy_y.append(0.5 * totalWeight * (new_velocity_y[i] ** 2))
             else:
                 energy_y.append(0)
         plt.subplot(323)
@@ -359,7 +338,7 @@ def initialise_gui():
             path_label.grid(row=2, column=1, padx=150, sticky="NW", rowspan=5)
             # Run Button
             tkinter.Button(top, text="Track", command=start_tracking, height=1, width=10, font=("Ariel", 25)).grid(
-                row=7, column=1)
+                row=8, column=1)
 
             vs = cv2.VideoCapture(file_location.get())
             _, frame = vs.read()
@@ -376,13 +355,35 @@ def initialise_gui():
             cv2.destroyAllWindows()
 
     def start_tracking():
-        track(file_location.get(), colour_choice.get())
+        try:
+            weight = int(weight_used.get())
+            tkinter.messagebox.showinfo("Directions", "Use 'Space' to start tracking.\n"
+                                                      "Use 'S' to select a new area to track. Use your mouse to draw "
+                                                      "the bounding box around the plate, and then 'Space' to start "
+                                                      "tracking\n"
+                                                      "Use 'R' to reset the tracking and attempt to find the plates\n"
+                                                      "Use 'A' to clear the current path for multiple reps\n"
+                                                      "Use 'Q' to quit")
+            track(file_location.get(), colour_choice.get(), weight)
+        except ValueError:
+            tkinter.messagebox.showerror("Error", "Please input a valid Integer for the weight used")
 
     def live_tracking():
-        track(0, colour_choice.get())
+        try:
+            weight = int(weight_used.get())
+            tkinter.messagebox.showinfo("Directions", "Use 'Space' to start tracking.\n"
+                                                      "Use 'S' to select a new area to track. Use your mouse to draw "
+                                                      "the bounding box around the plate, and then 'Space' to start "
+                                                      "tracking\n"
+                                                      "Use 'R' to reset the tracking and attempt to find the plates\n"
+                                                      "Use 'A' to clear the current path for multiple reps\n"
+                                                      "Use 'Q' to quit")
+            track(0, colour_choice.get(), weight)
+        except ValueError:
+            tkinter.messagebox.showerror("Error", "Please input a valid Integer for the weight used")
 
     top = tkinter.Tk()
-    top.geometry("575x550")
+    top.geometry("575x600")
     colour_choice = tkinter.StringVar(value="K")
     file_location = tkinter.StringVar(value="")
     first_frame = tkinter.Label(image=None)
@@ -412,48 +413,18 @@ def initialise_gui():
                                                                                                      row=6, column=0,
                                                                                                      sticky="W")
 
+    # Weight input
+    tkinter.Label(top, text="Enter the weight of your bar (KG): ", font=("Ariel", 15)).grid(padx=20, row=7, column=0, columnspan=2, sticky="W")
+    weight_used = tkinter.Entry(top)
+    weight_used.grid(row=7, column=1)
     # File Selection Button
     tkinter.Button(top, text="Select a video file", command=file_select, height=1, width=15, font=("Ariel", 13)).grid(
         padx=114, row=1, column=1)
-    tkinter.Button(top, text="Live", command=live_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=7,
+    tkinter.Button(top, text="Live", command=live_tracking, height=1, width=10, font=("Ariel", 25)).grid(row=8,
                                                                                                          column=0)
-    # todo add weight input
-    # todo add tracking input
     # widgets end here
     top.mainloop()
 
 
 if __name__ == '__main__':
     initialise_gui()
-    # inPath = input("Enter the path to the video, or 0 to use camera: ")
-    # diskColour = input("Enter a disk color, (B)lue, Blac(K), (Y)ellow, (G)reen, (R)ed: ")
-    # if inPath == "0":
-    #     inPath = int(inPath)
-    # track(inPath, diskColour)
-    # inPath = "Videos/Sophie/Sophie1.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie2.mp4"
-    # diskColour = "Y"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie3.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie4.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie5.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie6.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
-    #
-    # inPath = "Videos/Sophie/Sophie7.mp4"
-    # diskColour = "K"
-    # track(inPath, diskColour)
