@@ -10,7 +10,6 @@ from PIL import Image, ImageTk
 from imutils.video import FPS
 from matplotlib import pyplot as plt
 import winsound
-from os import startfile
 
 
 def track(videoPath, colourMask, totalWeight):
@@ -116,14 +115,10 @@ def track(videoPath, colourMask, totalWeight):
             # check to see if the tracking was a success
             if success:
                 (x, y, w, h) = [int(v) for v in box]
-                # cv2.circle(frame, (x+int(w/2), y+int(h/2)), int(w/2), (0, 255, 0), 2)
                 (center, diameter) = (x + int(w / 2), y + int(h / 2)), int(w)
-                # center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
                 # draw the circle and centroid on the frame,
                 # then update the list of tracked points
-                # cv2.circle(frame, center, int(radius),
-                #            (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
                 cv2.line(frame, start_center, start_center_top, (0, 255, 0), 3)
 
@@ -156,8 +151,7 @@ def track(videoPath, colourMask, totalWeight):
 
             fps.update()
             fps.stop()
-            # initialize the set of information we'll be displaying on
-            # the frame
+            # initialize the set of information we'll be displaying on the frame
             info = [
                 ("Tracker", selectedTracker),
                 ("Success", "Yes" if success else "No"),
@@ -225,7 +219,6 @@ def track(videoPath, colourMask, totalWeight):
         # show the output frame
         out.write(frame)
         cv2.imshow("Frame", frame)
-        # cv2.imshow("Mask", mask)
         key = cv2.waitKey(1 * pause_playback) & 0xFF
 
         # if the 'r' key is selected, we are going to "select" a bounding box to track
@@ -277,9 +270,6 @@ def track(videoPath, colourMask, totalWeight):
     # print("Dropped frames: {}".format(dropped_frames))
     # print("Accuracy: {}".format((total_frames - dropped_frames) / total_frames))
 
-    # open video in local video player
-    # startfile(outputPath)
-
     if len(time_axis) > 1:
         plt.figure(figsize=(15, 8))
         plt.subplot(321)
@@ -293,7 +283,7 @@ def track(videoPath, colourMask, totalWeight):
         plt.ylabel("Displacement (M)")
         plt.plot(time_axis, displacement_y)
 
-        new_velocity_x = np.gradient(displacement_x, time_axis)  # was -> , 0.5)
+        new_velocity_x = np.gradient(displacement_x, time_axis)
         new_velocity_y = np.gradient(displacement_y, time_axis)
         acceleration_x = np.gradient(new_velocity_x, time_axis)
         acceleration_y = np.gradient(new_velocity_y, time_axis)
